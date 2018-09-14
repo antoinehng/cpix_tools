@@ -2,17 +2,7 @@
 
 import uuid
 
-DRM_LIST = [
-    {
-        "name": "PLAYREADY",
-        "system_id": uuid.UUID("9a04f079-9840-4286-ab92-e65be0885f95"),
-    },
-    {
-        "name": "WIDEVINE",
-        "system_id": uuid.UUID("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"),
-    },
-    {"name": "NAGRA", "system_id": uuid.UUID("adb41c24-2dbf-4a6d-958b-4457c0d27b95")},
-]
+from . import get_drm_name
 
 
 class DrmSystem(object):
@@ -42,16 +32,10 @@ class DrmSystem(object):
         self.pssh_data = pssh_data
         self.content_protection_data = content_protection_data
 
-    def get_system_id_name(self):
-        for DRM in DRM_LIST:
-            if DRM["system_id"] == self.system_id:
-                return DRM["name"]
-        return "Undefined"
-
     def __str__(self):
         """Display the DRM System basic values
 
         :return: human readable DRM System basic values
         :rtype: str
         """
-        return f"kid:{self.kid}, drm:{self.get_system_id_name()}, system_id:{self.system_id}"
+        return f"kid:{self.kid}, drm:{get_drm_name(self.system_id)}, system_id:{self.system_id}"

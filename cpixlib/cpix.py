@@ -3,9 +3,10 @@
 import os, uuid, errno, base64, json
 import xml.etree.ElementTree as ET
 
-from .content_key import *
-from .drm_system import *
-from .usage_rule import *
+from . import get_drm_name, get_drm_system_id
+from .content_key import ContentKey
+from .drm_system import DrmSystem
+from .usage_rule import UsageRule
 
 
 class Cpix(object):
@@ -74,7 +75,7 @@ class Cpix(object):
         for drm_system in drm_system_list:
             # Retrieve DRM System data
             kid = drm_system.get("kid")
-            system_id = drm_system.get("systemId")
+            system_id = uuid.UUID(drm_system.get("systemId"))
             pssh = drm_system.find("{urn:dashif:org:cpix}PSSH").text
             content_protection_data = drm_system.find(
                 "{urn:dashif:org:cpix}ContentProtectionData"
@@ -84,21 +85,20 @@ class Cpix(object):
             system_data = None
 
             # Microsoft PlayReady
-            if system_id in "9a04f079-9840-4286-ab92-e65be0885f95":
+            if system_id == get_drm_system_id("PLAYREADY"):
                 pssh_data = (
                     base64.b64decode(content_protection_data)
                     .decode("utf-8")
                     .split("<mspr:pro>")[1]
                     .replace("</mspr:pro>", "")
                 )
-                # pssh_data = pssh.encode('utf-8')[32:].decode('utf-8')
 
             # Google Widevine
-            elif system_id in "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed":
+            elif system_id == get_drm_system_id("WIDEVINE"):
                 pssh_data = pssh.encode("utf-8")[32:].decode("utf-8")
 
             # Nagra Connect
-            elif system_id in "adb41c24-2dbf-4a6d-958b-4457c0d27b95":
+            elif system_id == get_drm_system_id("NAGRA"):
                 pssh_data = pssh.encode("utf-8")[32:].decode("utf-8")
 
             # Add new DrmSystem object to the list
@@ -152,7 +152,7 @@ class Cpix(object):
             for drm_system in self.drm_system_list:
                 if drm_system.kid == content_key.kid:
                     drm = {}
-                    drm["name"] = drm_system.get_system_id_name()
+                    drm["name"] = get_drm_name(drm_system.system_id)
                     drm["system_id"] = str(drm_system.system_id)
                     drm["pssh"] = drm_system.pssh
                     drm["pssh_data"] = drm_system.pssh_data
