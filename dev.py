@@ -7,3 +7,4 @@ print(test)
 
 print(test.export_json_as_file())
 
+print(test.export_titanfile_xml_as_file())

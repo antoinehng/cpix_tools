@@ -3,7 +3,7 @@
 import os, uuid, errno, base64, json
 import xml.etree.ElementTree as ET
 
-from . import get_drm_name, get_drm_system_id
+from . import get_drm_name, get_drm_system_id, indent
 from .content_key import ContentKey
 from .drm_system import DrmSystem
 from .usage_rule import UsageRule
@@ -178,7 +178,91 @@ class Cpix(object):
         :rtype: str
         """
         output_file_path = os.path.splitext(self.file_path)[0] + ".json"
-        f = open(output_file_path, "wt", encoding="utf-8")
-        f.write(self.export_json())
-        f.close()
+        with open(output_file_path, "wt", encoding="utf-8") as f:
+            f.write(self.export_json())
         return output_file_path
+
+    def export_titanfile_xml(self):
+        """Create Ateme Titan File XML Common-Encryption from CPIX data
+
+        :return: XML string
+        :rtype: str
+        """
+        common_encryption = ET.Element("commonencryption")
+        server = ET.SubElement(
+            common_encryption,
+            "server",
+            attrib={"enabled": "false", "type": "piksel", "url": ""},
+        )
+
+        idx = 0
+        drm = [{}] * len(self.drm_system_list)
+        for content_key in self.content_key_list:
+            for drm_system in self.drm_system_list:
+                if drm_system.kid == content_key.kid:
+                    # create drm elem with attributes
+                    drm[idx]["element"] = ET.SubElement(
+                        common_encryption,
+                        "drm",
+                        attrib={
+                            "idx": str(idx + 1),
+                            "system_id": str(drm_system.system_id),
+                            "scheme_value": get_drm_name(drm_system.system_id),
+                        },
+                    )
+                    # create drm/key elem with key and kid attributes
+                    drm[idx]["key"] = ET.SubElement(
+                        drm[idx]["element"],
+                        "key",
+                        attrib={
+                            "id": str(content_key.kid),
+                            "content": str(content_key.key),
+                        },
+                    )
+                    # create drm/data elem and set inner text
+                    drm[idx]["data"] = ET.SubElement(drm[idx]["element"], "data")
+                    drm[idx]["data"].text = drm_system.pssh_data
+                    # create drm/initialization_vector_size elem and set value
+                    drm[idx]["iv"] = ET.SubElement(
+                        drm[idx]["element"], "initialization_vector_size"
+                    )
+                    drm[idx]["iv"].text = "8_bytes"
+
+                    # Increment idx for next iter
+                    idx = idx + 1
+
+        indent(common_encryption)
+        return ET.tostring(common_encryption, encoding="utf-8", method="xml").decode()
+
+    def export_titanfile_xml_as_file(self):
+        """Write Ateme Titan File XML Common-Encryption
+        
+        :return: Output file path
+        :rtype: str
+        """
+        output_file_path = os.path.splitext(self.file_path)[0] + "_titanfile.xml"
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            f.write(self.export_titanfile_xml())
+        return output_file_path
+
+    def update_titanfile_kpreset_file(self, kpreset_path):
+        """Update Ateme Titan File kPreset with CPIX data
+        
+        :return: Output file path
+        :rtype: str
+        """
+        output_file_path = os.path.splitext(kpreset_path)[0] + "_cpix.kpreset"
+
+        with open(kpreset_path, "r") as f:
+            source = f.read()
+
+        updated = source
+        updated = updated.replace("<commonencryption>", "</commonencryption>")
+        updated = updated.split("</commonencryption>")
+        updated[1] = self.export_titanfile_xml()
+        updated = "".join(updated)
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            f.write(updated)
+
+        return output_file_path
+
