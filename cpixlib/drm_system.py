@@ -9,7 +9,7 @@ class DrmSystem(object):
     """This class defines a DRMSystem CPIX element"""
 
     def __init__(
-        self, kid, system_id, pssh, content_protection_data=None, pssh_data=None
+        self, kid, system_id, pssh, pssh_data=None, content_protection_data=None
     ):
         """Init a DRM System element
 
