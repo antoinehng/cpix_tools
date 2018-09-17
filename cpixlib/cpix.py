@@ -83,28 +83,7 @@ class Cpix(object):
             ).text
 
             # We want to find the pssh data without the pssh box headers
-            system_data = None
-
-            # Microsoft PlayReady
-            if system_id == get_drm_system_id("PLAYREADY"):
-                pssh_data = (
-                    base64.b64decode(content_protection_data)
-                    .decode("utf-8")
-                    .split("<mspr:pro>")[1]
-                    .replace("</mspr:pro>", "")
-                )
-
-            # Google Widevine
-            elif system_id == get_drm_system_id("WIDEVINE"):
-                pssh_data = base64.b64encode(base64.b64decode(pssh)[32:]).decode(
-                    "utf-8"
-                )
-
-            # Nagra Connect
-            elif system_id == get_drm_system_id("NAGRA"):
-                pssh_data = base64.b64encode(base64.b64decode(pssh)[32:]).decode(
-                    "utf-8"
-                )
+            pssh_data = base64.b64encode(base64.b64decode(pssh)[32:]).decode("utf-8")
 
             # Add new DrmSystem object to the list
             self.drm_system_list.append(
