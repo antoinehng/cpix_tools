@@ -96,11 +96,15 @@ class Cpix(object):
 
             # Google Widevine
             elif system_id == get_drm_system_id("WIDEVINE"):
-                pssh_data = pssh.encode("utf-8")[32:].decode("utf-8")
+                pssh_data = base64.b64encode(base64.b64decode(pssh)[32:]).decode(
+                    "utf-8"
+                )
 
             # Nagra Connect
             elif system_id == get_drm_system_id("NAGRA"):
-                pssh_data = pssh.encode("utf-8")[32:].decode("utf-8")
+                pssh_data = base64.b64encode(base64.b64decode(pssh)[32:]).decode(
+                    "utf-8"
+                )
 
             # Add new DrmSystem object to the list
             self.drm_system_list.append(
