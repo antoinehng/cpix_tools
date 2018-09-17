@@ -2,6 +2,7 @@
 
 import os, uuid, errno, base64, json
 import xml.etree.ElementTree as ET
+from operator import itemgetter
 
 from . import get_drm_name, get_drm_system_id, indent
 from .content_key import ContentKey
@@ -133,6 +134,11 @@ class Cpix(object):
                 )
             )
 
+        # Make sure UsageRule List is ordered by video_filter['min_pixels']
+        self.usage_rule_list = sorted(
+            self.usage_rule_list, key=lambda k: k.video_filter["min_pixels"]
+        )
+
     def export_json(self):
         """Create JSON string from CPIX data
 
@@ -197,39 +203,44 @@ class Cpix(object):
 
         idx = 0
         drm = [{}] * len(self.drm_system_list)
-        for content_key in self.content_key_list:
-            for drm_system in self.drm_system_list:
-                if drm_system.kid == content_key.kid:
-                    # create drm elem with attributes
-                    drm[idx]["element"] = ET.SubElement(
-                        common_encryption,
-                        "drm",
-                        attrib={
-                            "idx": str(idx + 1),
-                            "system_id": str(drm_system.system_id),
-                            "scheme_value": get_drm_name(drm_system.system_id),
-                        },
-                    )
-                    # create drm/key elem with key and kid attributes
-                    drm[idx]["key"] = ET.SubElement(
-                        drm[idx]["element"],
-                        "key",
-                        attrib={
-                            "id": str(content_key.kid),
-                            "content": str(content_key.key),
-                        },
-                    )
-                    # create drm/data elem and set inner text
-                    drm[idx]["data"] = ET.SubElement(drm[idx]["element"], "data")
-                    drm[idx]["data"].text = drm_system.pssh_data
-                    # create drm/initialization_vector_size elem and set value
-                    drm[idx]["iv"] = ET.SubElement(
-                        drm[idx]["element"], "initialization_vector_size"
-                    )
-                    drm[idx]["iv"].text = "8_bytes"
+        for usage_rule in self.usage_rule_list:
+            # Keep the usage rues ordered by min_pixels
+            for content_key in self.content_key_list:
+                if content_key.kid == usage_rule.kid:
+                    for drm_system in self.drm_system_list:
+                        if drm_system.kid == content_key.kid:
+                            # create drm elem with attributes
+                            drm[idx]["element"] = ET.SubElement(
+                                common_encryption,
+                                "drm",
+                                attrib={
+                                    "idx": str(idx + 1),
+                                    "system_id": str(drm_system.system_id),
+                                    "scheme_value": get_drm_name(drm_system.system_id),
+                                },
+                            )
+                            # create drm/key elem with key and kid attributes
+                            drm[idx]["key"] = ET.SubElement(
+                                drm[idx]["element"],
+                                "key",
+                                attrib={
+                                    "id": str(content_key.kid),
+                                    "content": str(content_key.key),
+                                },
+                            )
+                            # create drm/data elem and set inner text
+                            drm[idx]["data"] = ET.SubElement(
+                                drm[idx]["element"], "data"
+                            )
+                            drm[idx]["data"].text = drm_system.pssh_data
+                            # create drm/initialization_vector_size elem and set value
+                            drm[idx]["iv"] = ET.SubElement(
+                                drm[idx]["element"], "initialization_vector_size"
+                            )
+                            drm[idx]["iv"].text = "8_bytes"
 
-                    # Increment idx for next iter
-                    idx = idx + 1
+                            # Increment idx for next iter
+                            idx = idx + 1
 
         indent(common_encryption)
         return ET.tostring(common_encryption, encoding="utf-8", method="xml").decode()
